@@ -88,7 +88,7 @@ td.n,th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-
 tr.clickable{cursor:pointer} tr.clickable:hover td{background:var(--surface2)}
 tr.selected td{background:var(--surface2)}
 
-.two{display:grid;grid-template-columns:minmax(0,420px) minmax(0,1fr);gap:18px;align-items:start}
+.two{display:grid;grid-template-columns:minmax(0,420px) minmax(0,1fr);gap:18px;align-items:start;scroll-margin-top:120px}
 @media (max-width:760px){.two{grid-template-columns:1fr}}
 
 .board{display:grid;grid-template-columns:repeat(8,1fr);width:100%;max-width:420px;aspect-ratio:1;border:2px solid var(--line);border-radius:4px;overflow:hidden;user-select:none;touch-action:manipulation}
@@ -197,6 +197,17 @@ tr.selected td{background:var(--surface2)}
     <div class="tiles" id="sysTiles" style="margin-bottom:12px"></div>
     <div class="row" style="margin-bottom:10px"><button class="btn primary" id="testBtn">Test me on a random line</button><span class="small muted">A line is solid after three clean runs; it goes rusty if you leave it for ten days. Hints count as errors.</span></div>
     <div class="tablewrap" id="branchTable"></div>
+  </div>
+  <div class="panel" id="cardsPanel">
+    <div class="panel-head"><h2>Line memory cards</h2>
+      <div class="seg" id="cardSeg"><button data-c="both" class="on">Both systems</button><button data-c="vienna">Vienna</button><button data-c="london">London</button></div></div>
+    <p class="small muted" style="margin:0 0 10px">Every White move in the lines is a card. The position appears with Black's last move marked; you play the move. A right answer pushes the card out (1 day, then 3, then roughly doubling). A miss brings it back later in the same session and again tomorrow. New cards come in line order so the early moves settle first.</p>
+    <div class="tiles" id="cardTiles"></div>
+    <div class="row" style="margin-top:10px"><button class="btn primary" id="cardStart">Train due and new cards</button><button class="btn" id="cardAhead">Review ahead</button><span class="small muted" id="cardNote"></span></div>
+    <div class="two" id="cardArea" hidden style="margin-top:12px">
+      <div class="panel" style="padding:12px"><div class="row"><div class="eyebrow" id="cardTitle">Card</div><span class="spacer"></span><span class="small muted num" id="cardCount"></span></div><div id="cardBoard" style="margin-top:8px"></div><div class="msg" id="cardMsg"></div><div class="board-tools"><button class="btn small" id="cardHint">Hint</button><button class="btn primary small" id="cardNext" hidden>Next card</button><button class="btn small" id="cardStop">End session</button></div></div>
+      <div class="panel" style="padding:12px" id="cardNotes"><div class="eyebrow">Lines this position belongs to</div><p class="small muted" style="margin:6px 0 0">Shown after you answer.</p></div>
+    </div>
   </div>
   <div class="two" id="drillArea" hidden>
     <div class="panel"><div class="eyebrow" id="drillTitle"></div><div id="drillBoard" style="margin-top:8px"></div><div class="msg" id="drillMsg"></div><div class="board-tools"><button class="btn small" id="drillRestart">Restart line</button><button class="btn small" id="drillHint">Show next move</button><button class="btn small" id="drillNext">Next weakest line</button></div><div class="moves" id="drillMoves"></div></div>
@@ -2417,13 +2428,14 @@ const sleep = ms => new Promise(r=>setTimeout(r,ms));
 
 // ---------- store (db capability with localStorage mirror) ----------
 let DB=null, USERID=null, storeReady=false;
-const STORE = { puzzleWeeks: lsGet('pz_weeks',{}), scans: lsGet('scans',{}), snapshots: lsGet('snaps',{}), mastery: lsGet('mastery',{}) };
+const STORE = { puzzleWeeks: lsGet('pz_weeks',{}), scans: lsGet('scans',{}), snapshots: lsGet('snaps',{}), mastery: lsGet('mastery',{}), cards: lsGet('cards',{}) };
 async function initStore(){
   try{
     if(window.claude && window.claude.use){
       DB = await window.claude.use('db');
       if(DB){
-        const [pw, sc, sn, ma] = await Promise.all([DB.collection('puzzleweeks').get(), DB.collection('scans').get(), DB.collection('weeks').get(), DB.collection('mastery').get()]);
+        const [pw, sc, sn, ma, cd] = await Promise.all([DB.collection('puzzleweeks').get(), DB.collection('scans').get(), DB.collection('weeks').get(), DB.collection('mastery').get(), DB.doc('cards/all').get()]);
+        if(cd.exists){ const x=cd.data().cards||{}; for(const k in x){ const cur=STORE.cards[k]; if(!cur||(x[k].due||0)>(cur.due||0)) STORE.cards[k]=x[k]; } lsSet('cards',STORE.cards); }
         ma.docs.forEach(d=>{ const x=d.data(); const cur=STORE.mastery[d.id]; if(!cur||(x.lastRun||0)>(cur.lastRun||0)) STORE.mastery[d.id]=x; }); lsSet('mastery',STORE.mastery);
         pw.docs.forEach(d=>{ STORE.puzzleWeeks[d.id]=d.data(); });
         sc.docs.forEach(d=>{ STORE.scans[d.id]=d.data(); });
@@ -2433,7 +2445,7 @@ async function initStore(){
     }
   }catch(e){ console.warn('store unavailable', e); DB=null; }
   storeReady=true;
-  renderPuzzleRecord(); renderMastery(); renderRepCards(); if(STATE.games.length){ renderWeekTable(); renderScanTiles(); renderBlunderList(); renderReview(); }
+  renderPuzzleRecord(); renderMastery(); renderRepCards(); renderCards(); if(STATE.games.length){ renderWeekTable(); renderScanTiles(); renderBlunderList(); renderReview(); }
 }
 async function saveDoc(coll,id,data){
   if(coll==='puzzleweeks') STORE.puzzleWeeks[id]=data; else if(coll==='scans') STORE.scans[id]=data; else if(coll==='weeks') STORE.snapshots[id]=data;
@@ -2830,6 +2842,69 @@ function drillMove(from,to,promo){ const d=drill; if(!d||d.done) return; const e
 $('#drillRestart').addEventListener('click',()=>{ if(drill) startDrill(drill.r.id, drill.mode); });
 $('#drillHint').addEventListener('click',()=>{ if(!drill||drill.done) return; const exp=expectedMove(drill); if(exp){ drill.errors++; drillBoard.hint(exp.from); $('#drillMsg').className='msg warn'; $('#drillMsg').textContent='Next move: '+exp.san+'. The piece is highlighted. That counts as an error.'; } });
 
+// ---------- line memory cards (spaced repetition on every White move) ----------
+let CARDS=null, cardSess=null, cardBoard=null, cardSel=lsGet('cardSel','both');
+function hashKey(s){ let h=5381; for(let i=0;i<s.length;i++) h=((h<<5)+h+s.charCodeAt(i))|0; return (h>>>0).toString(36); }
+function buildCards(){
+  if(CARDS) return CARDS; const map={}; const order=[];
+  SYSTEMS.forEach((s,si)=>s.branches.forEach((b,bi)=>{ const c=new Chess(); let last=null; b.line.forEach((san,i)=>{ const before=c.fen(); const mv=c.move(san); if(!mv) return; if(mv.color===s.color){ const key=before.split(' ').slice(0,4).join(' '); let card=map[key]; if(!card){ card={id:'c'+hashKey(key), fen:before, moves:[], moveNo:Math.floor(i/2)+1, last, branches:[], systemId:s.id, order:si*1000+i*10+bi}; map[key]=card; order.push(card); } if(!card.moves.some(m=>m.san===mv.san)) card.moves.push({san:mv.san,from:mv.from,to:mv.to}); if(!card.branches.some(x=>x.id===b.id)) card.branches.push({id:b.id,name:b.name,ideas:b.ideas,systemName:s.name}); } last={from:mv.from,to:mv.to,san}; }); }));
+  CARDS=order.sort((a,b)=>a.order-b.order); return CARDS;
+}
+function cardRec(id){ return STORE.cards[id]||{reps:0,interval:0,due:0,lapses:0,seen:false}; }
+function cardsFor(sel){ return buildCards().filter(c=>sel==='both'||c.systemId===sel); }
+function cardStats(sel){ const now=Date.now(); const all=cardsFor(sel); const st={total:all.length,fresh:0,learning:0,learned:0,mastered:0,due:0}; all.forEach(c=>{ const r=cardRec(c.id); if(!r.seen) st.fresh++; else if(r.interval>=21) st.mastered++; else if(r.interval>=7) st.learned++; else st.learning++; if(r.seen&&r.due<=now) st.due++; }); return st; }
+function renderCards(){
+  $$('#cardSeg button').forEach(b=>b.classList.toggle('on',b.dataset.c===cardSel));
+  const st=cardStats(cardSel);
+  $('#cardTiles').innerHTML=[{l:'Due now',v:st.due,s:st.due?'ready to review':'nothing waiting'},{l:'New',v:st.fresh,s:'never seen, '+st.total+' cards in all'},{l:'Learning',v:st.learning,s:'interval under a week'},{l:'Learned',v:st.learned,s:'a week or more'},{l:'Mastered',v:st.mastered,s:'three weeks or more'}].map(x=>'<div class="tile"><div class="eyebrow">'+x.l+'</div><div class="v">'+x.v+'</div><div class="sub">'+x.s+'</div></div>').join('');
+  const soon=cardsFor(cardSel).map(c=>cardRec(c.id)).filter(r=>r.seen&&r.due>Date.now()).sort((a,b)=>a.due-b.due)[0];
+  $('#cardNote').textContent= st.due? st.due+' due, '+Math.min(12,st.fresh)+' new in the next session' : (soon? 'Next card due '+fmtDate(soon.due/1000) : (st.fresh? Math.min(12,st.fresh)+' new cards in the next session':'Every card is scheduled out. Come back tomorrow.'));
+}
+function saveCards(){ lsSet('cards',STORE.cards); if(DB){ clearTimeout(saveCards.t); saveCards.t=setTimeout(()=>{ DB.collection('cards').doc('all').set({cards:STORE.cards,updated:Date.now()}).catch(()=>{}); },1500); } }
+function startCards(ahead){
+  const now=Date.now(); const all=cardsFor(cardSel); let due=all.filter(c=>{ const r=cardRec(c.id); return r.seen&&r.due<=now; });
+  const fresh=all.filter(c=>!cardRec(c.id).seen).slice(0,12);
+  if(ahead){ due=all.filter(c=>cardRec(c.id).seen).sort((a,b)=>cardRec(a.id).due-cardRec(b.id).due).slice(0,15); }
+  for(let i=due.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [due[i],due[j]]=[due[j],due[i]]; }
+  const queue=due.map(c=>({c,retry:false})).concat(ahead?[]:fresh.map(c=>({c,retry:false})));
+  if(!queue.length){ $('#cardNote').textContent='Nothing to train right now. Use Review ahead to go early.'; return; }
+  cardSess={queue, total:queue.length, done:0, right:0, wrong:0, cur:null, answered:false, ahead:!!ahead};
+  $('#cardArea').hidden=false; if(!cardBoard) cardBoard=makeBoard($('#cardBoard'),{onMove:cardMove}); nextCard(); $('#cardArea').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function nextCard(){
+  const s=cardSess; if(!s) return; const item=s.queue.shift();
+  if(!item){ s.cur=null; cardBoard.enable(false); $('#cardMsg').className='msg good'; $('#cardMsg').textContent='Session done: '+s.right+' right first try, '+s.wrong+' missed. '+(s.wrong? 'Missed cards are due again tomorrow.':'Everything moved further out.'); $('#cardNext').hidden=true; $('#cardCount').textContent=''; $('#cardTitle').textContent='Finished'; renderCards(); renderReview(); return; }
+  s.cur=item; s.answered=false; s.hinted=false; const c=item.c; const ch=new Chess(c.fen);
+  cardBoard.set(ch,'w'); cardBoard.lastMove(c.last? {from:c.last.from,to:c.last.to}:null); cardBoard.hint(null); cardBoard.enable(true,'w');
+  const r=cardRec(c.id); $('#cardTitle').textContent=(item.retry?'Again: ':r.seen?'Review: ':'New: ')+(c.systemId==='vienna'?'Vienna Game':'London System')+' · move '+c.moveNo;
+  $('#cardCount').textContent=(s.done+1)+' of '+s.total+(s.queue.length+1+s.done>s.total?' (+'+(s.queue.length+1+s.done-s.total)+' retries)':'');
+  $('#cardMsg').className='msg'; $('#cardMsg').textContent= c.last? 'Black played '+c.last.san+'. Your move.' : 'White to move. Your first move.';
+  $('#cardNext').hidden=true; $('#cardNotes').innerHTML='<div class="eyebrow">Lines this position belongs to</div><p class="small muted" style="margin:6px 0 0">Shown after you answer.</p>';
+}
+function gradeCard(c, correct){
+  const r=cardRec(c.id); const now=Date.now(); r.seen=true;
+  if(correct){ r.reps++; r.interval= r.reps===1?1 : r.reps===2?3 : Math.round(r.interval*2.3); r.due=now+r.interval*864e5; }
+  else { r.lapses++; r.reps=0; r.interval=0; r.due=now; }
+  STORE.cards[c.id]=r; saveCards();
+}
+function showCardNotes(c, ok){
+  const names=c.branches.map(b=>'<li><b>'+esc(b.name)+'</b><br><span class="small muted">'+esc(b.ideas[0])+'</span></li>').join('');
+  $('#cardNotes').innerHTML='<div class="eyebrow">Lines this position belongs to</div><ul style="margin:6px 0 0;padding-left:18px">'+names+'</ul>'+(ok?'':'<p class="small muted" style="margin:8px 0 0">This card comes back later in the session and again tomorrow.</p>');
+}
+function cardMove(from,to,promo){
+  const s=cardSess; if(!s||!s.cur||s.answered) return; const c=s.cur.c; const ch=new Chess(c.fen); const mv=ch.move({from,to,promotion:promo}); if(!mv){ cardBoard.redraw(); return; }
+  const ok=c.moves.some(m=>m.from===from&&m.to===to) && !s.hinted;
+  s.answered=true; cardBoard.enable(false); s.done++;
+  if(ok){ cardBoard.set(ch); cardBoard.lastMove({from,to}); if(!s.cur.retry) s.right++; if(!s.cur.retry||true) gradeCard(c,true); $('#cardMsg').className='msg good'; $('#cardMsg').textContent='Right: '+mv.san+'.'; showCardNotes(c,true); $('#cardNext').hidden=false; setTimeout(()=>{ if(cardSess===s&&s.cur&&s.cur.c===c&&s.answered) nextCard(); },900); }
+  else { const best=c.moves[0]; const ch2=new Chess(c.fen); const bm=ch2.move(best.san); cardBoard.set(ch2); cardBoard.lastMove({from:bm.from,to:bm.to}); if(!s.cur.retry){ s.wrong++; gradeCard(c,false); } $('#cardMsg').className='msg bad'; $('#cardMsg').textContent=(s.hinted?'With a hint. ':mv.san+' is not the line. ')+'The move is '+best.san+'.'; showCardNotes(c,false); s.queue.splice(Math.min(4,s.queue.length),0,{c,retry:true}); $('#cardNext').hidden=false; }
+}
+$('#cardHint').addEventListener('click',()=>{ const s=cardSess; if(!s||!s.cur||s.answered) return; s.hinted=true; cardBoard.hint(s.cur.c.moves[0].from); $('#cardMsg').className='msg warn'; $('#cardMsg').textContent='The piece is highlighted. This card now counts as missed.'; });
+$('#cardNext').addEventListener('click',()=>nextCard());
+$('#cardStop').addEventListener('click',()=>{ if(cardSess){ cardSess.queue=[]; nextCard(); } });
+$('#cardStart').addEventListener('click',()=>startCards(false));
+$('#cardAhead').addEventListener('click',()=>startCards(true));
+$$('#cardSeg button').forEach(b=>b.addEventListener('click',()=>{ cardSel=b.dataset.c; lsSet('cardSel',cardSel); renderCards(); }));
+
 // ---------- puzzles ----------
 const LEVELS=['easiest','easier','normal','harder','hardest'];
 let pz={ board:null, cur:null, chess:null, idx:0, failed:false, done:false, streak:0, fails:0, level: lsGet('pzLevel',1), busy:false };
@@ -3027,7 +3102,8 @@ function renderReview(){
   ];
   el.innerHTML='<table><thead><tr><th>Metric</th><th class="n">'+fmtWeek(a.week)+'</th><th class="n">'+(b?fmtWeek(b.week):'before')+'</th><th class="n">Change</th></tr></thead><tbody>'+rows.map(([l,x,y,f,up,cf])=>{ let ch=''; if(x!=null&&y!=null&&typeof x==='number'&&typeof y==='number'){ const d=x-y; const good= up? d>0 : d<0; ch='<span class="'+(d===0?'flat':good?'up':'down')+'">'+cf(d)+'</span>'; } return '<tr><td>'+l+'</td><td class="n">'+f(x)+'</td><td class="n">'+f(y)+'</td><td class="n">'+ch+'</td></tr>'; }).join('')+'</tbody></table>';
   // focus
-  const focus=[]; { const sys=SYSTEMS.find(s=>s.id===sysSel)||SYSTEMS[0]; const notSolid=sys.branches.filter(b=>branchStatus(b.id)!=='solid'); const rusty=sys.branches.filter(b=>branchStatus(b.id)==='rusty');
+  const focus=[]; { const cs=cardStats('both'); if(cs.due||cs.fresh) focus.push({sev: cs.due>=15?'warn':'', text:'Memory cards: <b>'+cs.due+'</b> due now, '+cs.fresh+' never seen, '+cs.mastered+' mastered of '+cs.total+'. One session a day keeps the due pile small.'}); }
+  { const sys=SYSTEMS.find(s=>s.id===sysSel)||SYSTEMS[0]; const notSolid=sys.branches.filter(b=>branchStatus(b.id)!=='solid'); const rusty=sys.branches.filter(b=>branchStatus(b.id)==='rusty');
     if(notSolid.length) focus.push({sev: rusty.length?'warn':'', text:esc(sys.name)+': '+(sys.branches.length-notSolid.length)+' of '+sys.branches.length+' lines solid. Next up: <b>'+esc(notSolid[0].name)+'</b>'+(notSolid[1]?' and <b>'+esc(notSolid[1].name)+'</b>':'')+'. Three clean runs each.'+(rusty.length?' '+rusty.length+' line'+(rusty.length===1?' is':'s are')+' rusty: run them once.':'')});
     else focus.push({sev:'good',text:esc(sys.name)+': every line is solid. Keep them warm with one test a day and switch to the other system.'}); }
   const leaks=['w','b'].flatMap(c=>STATE.openings[c].filter(o=>o.flag==='leak').map(o=>({...o,c}))).sort((a,b)=>a.gap-b.gap);
@@ -3040,7 +3116,7 @@ function renderReview(){
   const scans=Object.values(STORE.scans).filter(s=>STATE.games.some(g=>g.id===s.gameId)); const allB=scans.flatMap(s=>s.blunders);
   if(allB.length>=5){ const ph={opening:0,middlegame:0,endgame:0}; allB.forEach(x=>ph[x.phase]++); const top=Object.entries(ph).sort((a,b)=>b[1]-a[1])[0]; focus.push({sev:'',text:'Tactics: most of your engine-flagged blunders come in the <b>'+top[0]+'</b>. Do 20 puzzles this week with the '+(top[0]==='endgame'?'Endgame':top[0]==='opening'?'Opening':'Middlegame')+' theme, then scan your next five games.'}); }
   else focus.push({sev:'',text:'Tactics: do 20 puzzles this week and scan your next five games so the blunder rate has a baseline.'});
-  $('#focusList').innerHTML=focus.slice(0,4).map(x=>'<div class="finding '+x.sev+'">'+x.text+'</div>').join('');
+  $('#focusList').innerHTML=focus.slice(0,5).map(x=>'<div class="finding '+x.sev+'">'+x.text+'</div>').join('');
   renderSnapTable();
 }
 function renderSnapTable(){
@@ -3055,15 +3131,16 @@ async function saveSnapshots(){
 }
 
 // ---------- export / import ----------
-$('#exportBtn').addEventListener('click',()=>{ const blob=new Blob([JSON.stringify({version:1,exported:new Date().toISOString(),puzzleWeeks:STORE.puzzleWeeks,scans:STORE.scans,snapshots:STORE.snapshots,mastery:STORE.mastery},null,1)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='chess-lab-records-'+weekKey(new Date())+'.json'; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1000); });
+$('#exportBtn').addEventListener('click',()=>{ const blob=new Blob([JSON.stringify({version:1,exported:new Date().toISOString(),puzzleWeeks:STORE.puzzleWeeks,scans:STORE.scans,snapshots:STORE.snapshots,mastery:STORE.mastery,cards:STORE.cards},null,1)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='chess-lab-records-'+weekKey(new Date())+'.json'; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1000); });
 $('#importFile').addEventListener('change',async e=>{ const f=e.target.files[0]; if(!f) return; try{ const data=JSON.parse(await f.text()); let n=0;
   for(const k in (data.puzzleWeeks||{})){ if(!STORE.puzzleWeeks[k]||(data.puzzleWeeks[k].updated||0)>(STORE.puzzleWeeks[k].updated||0)){ STORE.puzzleWeeks[k]=data.puzzleWeeks[k]; n++; } }
   for(const k in (data.scans||{})){ if(!STORE.scans[k]){ STORE.scans[k]=data.scans[k]; n++; } }
   for(const k in (data.snapshots||{})){ if(!STORE.snapshots[k]||(data.snapshots[k].savedAt||0)>(STORE.snapshots[k].savedAt||0)){ STORE.snapshots[k]=data.snapshots[k]; n++; } }
   for(const k in (data.mastery||{})){ const cur=STORE.mastery[k]; if(!cur||(data.mastery[k].lastRun||0)>(cur.lastRun||0)){ STORE.mastery[k]=data.mastery[k]; n++; } }
+  for(const k in (data.cards||{})){ const cur=STORE.cards[k]; if(!cur||(data.cards[k].due||0)>(cur.due||0)){ STORE.cards[k]=data.cards[k]; n++; } } lsSet('cards',STORE.cards);
   lsSet('pz_weeks',STORE.puzzleWeeks); lsSet('scans',STORE.scans); lsSet('snaps',STORE.snapshots); lsSet('mastery',STORE.mastery);
   if(DB){ for(const k in data.puzzleWeeks||{}) await saveDoc('puzzleweeks',k,STORE.puzzleWeeks[k]); for(const k in data.scans||{}) await saveDoc('scans',k,STORE.scans[k]); for(const k in data.snapshots||{}) await saveDoc('weeks',k,STORE.snapshots[k]); }
-  $('#storeNote').textContent='Imported '+n+' record'+(n===1?'':'s')+'.'; renderPuzzleRecord(); renderRepCards(); renderMastery(); if(STATE.games.length){ renderWeekTable(); renderScanTiles(); renderBlunderList(); renderStrategy(); renderReview(); } else renderSnapTable();
+  $('#storeNote').textContent='Imported '+n+' record'+(n===1?'':'s')+'.'; renderPuzzleRecord(); renderRepCards(); renderMastery(); renderCards(); if(STATE.games.length){ renderWeekTable(); renderScanTiles(); renderBlunderList(); renderStrategy(); renderReview(); } else renderSnapTable();
  }catch(err){ $('#storeNote').textContent='Could not read that file: '+err.message; } e.target.value=''; });
 
 // ---------- routing + boot ----------
@@ -3075,7 +3152,7 @@ $('#timeClass').addEventListener('change',()=>{ STATE.timeClass=$('#timeClass').
 (function boot(){
   const saved=lsGet('username',null); if(saved) $('#username').value=saved;
   const tc=lsGet('tc',null); if(tc&&lsGet('tcChosen',false)){ STATE.timeClass=tc; $('#timeClass').value=tc; }
-  renderPuzzleRecord(); renderRepCards(); renderMastery(); renderSnapTable();
+  renderPuzzleRecord(); renderRepCards(); renderMastery(); renderCards(); renderSnapTable();
   initStore();
   const u=$('#username').value.trim(); if(u) loadPlayer(u);
 })();
