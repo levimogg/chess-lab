@@ -168,7 +168,7 @@ tr.selected td{background:var(--surface2)}
 <nav class="tabs"><div class="tabs-inner" id="tabs">
   <a href="#progress" data-view="progress">Progress</a>
   <a href="#openings" data-view="openings">Openings</a>
-  <a href="#tactics" data-view="tactics">Tactics</a>
+  <a href="#tactics" data-view="tactics">Training</a>
   <a href="#strategy" data-view="strategy">Strategy</a>
   <a href="#review" data-view="review">Weekly review</a>
 </div></nav>
@@ -229,11 +229,71 @@ tr.selected td{background:var(--surface2)}
   </div>
 </section>
 
-<!-- TACTICS -->
+<!-- TRAINING -->
 <section class="view" id="view-tactics" hidden>
+  <div class="panel">
+    <div class="panel-head"><h2>Your three problems, in order</h2><span class="small muted" id="trainScope"></span></div>
+    <div class="list" id="trainFindings"><div class="empty">Load games to see what to work on.</div></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><h2>1. Convert: play your winning positions out</h2>
+      <div class="row"><label class="small muted" for="convStrength">Opponent</label><select id="convStrength"><option value="1">about 800</option><option value="4" selected>about 1000</option><option value="8">about 1200</option><option value="20">full strength</option></select></div></div>
+    <p class="small muted" style="margin:0 0 10px">Every game where you were up 3 or more points after move 10 and still lost. You start from the first moment you had the advantage and play it out against Stockfish. The engine plays weaker than you by default; the goal is winning, not surviving.</p>
+    <div class="tiles" id="convTiles"></div>
+    <div class="two" style="margin-top:12px">
+      <div class="panel" style="padding:12px">
+        <div class="row"><div class="eyebrow" id="convTitle">Convert</div><span class="spacer"></span><span class="small num" id="convMat"></span></div>
+        <div id="convBoard" style="margin-top:8px"></div>
+        <div class="msg" id="convMsg">Pick a position from the list, or press Next position.</div>
+        <div class="board-tools"><button class="btn primary small" id="convNext">Next position</button><button class="btn small" id="convRetry">Restart this one</button><button class="btn small" id="convResign">Give up</button></div>
+        <div class="moves" id="convMoves"></div>
+      </div>
+      <div class="panel" style="padding:12px">
+        <div class="eyebrow" style="margin-bottom:6px">Technique when ahead</div>
+        <ol class="small" style="margin:0 0 10px;padding-left:18px"><li>Trade pieces, not pawns. Every trade makes the extra piece bigger.</li><li>Before each move: what does their last move attack? Then: is anything of mine undefended?</li><li>No new pawn moves in front of your king. Win with pieces.</li><li>Queens off as soon as you can do it for free.</li><li>Promote a pawn or mate with the extra piece. Do not hunt the king with everything hanging.</li></ol>
+        <div class="eyebrow" style="margin-bottom:6px">Positions you let slip</div>
+        <div class="tablewrap" id="convList" style="max-height:360px;overflow:auto"><div class="empty">Load games first.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><h2>2. Speed check: decide in 20 seconds</h2><span class="small muted">Middlegame positions from your own games. The engine grades the move; under 0.5 pawns lost is a pass.</span></div>
+    <div class="tiles" id="speedTiles"></div>
+    <div class="two" style="margin-top:12px">
+      <div class="panel" style="padding:12px">
+        <div class="row"><div class="eyebrow" id="speedTitle">Speed check</div><span class="spacer"></span><span class="num" id="speedClock" style="font-size:1.3rem;font-weight:600"></span></div>
+        <div id="speedBoard" style="margin-top:8px"></div>
+        <div class="msg" id="speedMsg">Ten positions, twenty seconds each. Play a sound move, not the best move.</div>
+        <div class="board-tools"><button class="btn primary small" id="speedStart">Start a round</button><button class="btn small" id="speedSkip" hidden>Next</button></div>
+      </div>
+      <div class="panel" style="padding:12px"><div class="eyebrow" style="margin-bottom:6px">Clock rules for rapid</div><ol class="small" style="margin:0 0 10px;padding-left:18px"><li>Opening moves you know: under 5 seconds. You average 12.</li><li>Checkpoint: 5 minutes left at move 20, 2 minutes at move 35.</li><li>A think over 60 seconds is only allowed when a piece is hanging or mate is in the air. Otherwise pick the sound move and go.</li><li>Under 30 seconds: no new plans. Keep everything defended, trade, push a passed pawn.</li></ol><div class="eyebrow" style="margin-bottom:6px">This round</div><div class="tablewrap" id="speedList"><div class="empty">No round yet.</div></div></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><h2>3. Blunder lab: what you actually drop</h2>
+      <div class="row"><label class="small muted" for="scanCount">Games</label><select id="scanCount"><option>3</option><option>5</option><option selected>10</option><option>20</option></select><button class="btn primary small" id="scanBtn">Scan latest unscanned</button></div></div>
+    <p class="small muted" style="margin:0 0 8px" id="scanNote">Stockfish runs in your browser at depth 11. Each game takes about 15 seconds. A blunder is a move that drops the evaluation by 2 pawns or more. Each one is tagged: hung a piece, missed a free piece, allowed mate, missed mate, or positional.</p>
+    <div class="progress" id="scanProgress"><div></div></div>
+    <div class="tiles" id="scanTiles" style="margin-top:12px"></div>
+    <div id="blunderTypes" style="margin-top:12px"></div>
+    <div class="two" style="margin-top:12px">
+      <div class="panel" style="padding:12px">
+        <div class="eyebrow">Find the better move</div>
+        <div id="blBoard" style="margin-top:8px"></div>
+        <div class="msg" id="blMsg">Pick a blunder from the list to replay the moment.</div>
+        <div class="board-tools"><button class="btn small" id="blReveal">Show engine move</button><button class="btn small" id="blRetry">Try again</button></div>
+      </div>
+      <div class="panel" style="padding:12px"><div class="eyebrow" style="margin-bottom:8px">Blunders found</div><div class="tablewrap" id="blunderList"><div class="empty">Scan some games to fill this list.</div></div></div>
+    </div>
+  </div>
+
   <div class="two">
     <div class="panel">
-      <div class="row"><div class="eyebrow">Puzzle trainer</div><span class="spacer"></span><span class="pill" id="pzLevel">easier</span></div>
+      <div class="row"><div class="eyebrow">Targeted puzzles</div><span class="spacer"></span><span class="pill" id="pzLevel">easier</span></div>
+      <p class="small muted" id="pzWhy" style="margin:6px 0 0">The theme is picked from your blunder types once you have scanned games. Until then: hanging pieces, because that is what decides games at this level.</p>
       <div id="pzBoard" style="margin-top:8px"></div>
       <div class="msg" id="pzMsg">Press Next puzzle to start.</div>
       <div class="board-tools">
@@ -241,7 +301,7 @@ tr.selected td{background:var(--surface2)}
         <button class="btn small" id="pzHint">Hint</button>
         <button class="btn small" id="pzSolution">Show solution</button>
         <select id="pzTheme" aria-label="Puzzle theme">
-          <option value="mix">Mixed themes</option><option value="mateIn1">Mate in 1</option><option value="mateIn2">Mate in 2</option><option value="hangingPiece">Hanging piece</option><option value="fork">Fork</option><option value="pin">Pin</option><option value="skewer">Skewer</option><option value="discoveredAttack">Discovered attack</option><option value="backRankMate">Back rank mate</option><option value="defensiveMove">Defensive move</option><option value="endgame">Endgame</option><option value="middlegame">Middlegame</option><option value="opening">Opening</option>
+          <option value="auto">Theme: from my blunders</option><option value="mix">Mixed themes</option><option value="hangingPiece">Hanging piece</option><option value="fork">Fork</option><option value="pin">Pin</option><option value="skewer">Skewer</option><option value="discoveredAttack">Discovered attack</option><option value="defensiveMove">Defensive move</option><option value="mateIn1">Mate in 1</option><option value="mateIn2">Mate in 2</option><option value="backRankMate">Back rank mate</option><option value="endgame">Endgame</option><option value="middlegame">Middlegame</option>
         </select>
       </div>
       <p class="small muted" style="margin:10px 0 0">Puzzles come from Lichess. Difficulty steps up after three clean solves in a row and down after two misses.</p>
@@ -251,22 +311,6 @@ tr.selected td{background:var(--surface2)}
       <div class="tiles" id="pzTiles" style="margin-top:10px"></div>
       <div class="tablewrap" id="pzWeekTable" style="margin-top:12px"></div>
       <div id="pzThemes" style="margin-top:12px"></div>
-    </div>
-  </div>
-  <div class="panel">
-    <div class="panel-head"><h2>Blunder lab: your own games, checked by an engine</h2>
-      <div class="row"><label class="small muted" for="scanCount">Games</label><select id="scanCount"><option>3</option><option selected>5</option><option>10</option><option>20</option></select><button class="btn primary small" id="scanBtn">Scan latest unscanned</button></div></div>
-    <p class="small muted" style="margin:0 0 8px" id="scanNote">Stockfish runs in your browser at depth 11. Each game takes about 15 seconds. A blunder is a move that drops the evaluation by 2 pawns or more.</p>
-    <div class="progress" id="scanProgress"><div></div></div>
-    <div class="tiles" id="scanTiles" style="margin-top:12px"></div>
-    <div class="two" style="margin-top:12px">
-      <div class="panel" style="padding:12px">
-        <div class="eyebrow">Find the better move</div>
-        <div id="blBoard" style="margin-top:8px"></div>
-        <div class="msg" id="blMsg">Pick a blunder from the list to replay the moment.</div>
-        <div class="board-tools"><button class="btn small" id="blReveal">Show engine move</button><button class="btn small" id="blRetry">Try again</button></div>
-      </div>
-      <div class="panel" style="padding:12px"><div class="eyebrow" style="margin-bottom:8px">Blunders found</div><div class="tablewrap" id="blunderList"><div class="empty">Scan some games to fill this list.</div></div></div>
     </div>
   </div>
 </section>
@@ -2428,13 +2472,15 @@ const sleep = ms => new Promise(r=>setTimeout(r,ms));
 
 // ---------- store (db capability with localStorage mirror) ----------
 let DB=null, USERID=null, storeReady=false;
-const STORE = { puzzleWeeks: lsGet('pz_weeks',{}), scans: lsGet('scans',{}), snapshots: lsGet('snaps',{}), mastery: lsGet('mastery',{}), cards: lsGet('cards',{}) };
+const STORE = { puzzleWeeks: lsGet('pz_weeks',{}), scans: lsGet('scans',{}), snapshots: lsGet('snaps',{}), mastery: lsGet('mastery',{}), cards: lsGet('cards',{}), conv: lsGet('conv',{}), convWeeks: lsGet('convWeeks',{}), speedWeeks: lsGet('speedWeeks',{}) };
 async function initStore(){
   try{
     if(window.claude && window.claude.use){
       DB = await window.claude.use('db');
       if(DB){
         const [pw, sc, sn, ma, cd] = await Promise.all([DB.collection('puzzleweeks').get(), DB.collection('scans').get(), DB.collection('weeks').get(), DB.collection('mastery').get(), DB.doc('cards/all').get()]);
+        const [cv, cvw, spw] = await Promise.all([DB.collection('conv').get(), DB.collection('convweeks').get(), DB.collection('speedweeks').get()]);
+        cv.docs.forEach(d=>{ const x=d.data(); if(!STORE.conv[d.id]||(x.updated||0)>(STORE.conv[d.id].updated||0)) STORE.conv[d.id]=x; }); cvw.docs.forEach(d=>{ const x=d.data(); if(!STORE.convWeeks[d.id]||(x.updated||0)>(STORE.convWeeks[d.id].updated||0)) STORE.convWeeks[d.id]=x; }); spw.docs.forEach(d=>{ const x=d.data(); if(!STORE.speedWeeks[d.id]||(x.updated||0)>(STORE.speedWeeks[d.id].updated||0)) STORE.speedWeeks[d.id]=x; }); lsSet('conv',STORE.conv); lsSet('convWeeks',STORE.convWeeks); lsSet('speedWeeks',STORE.speedWeeks);
         if(cd.exists){ const x=cd.data().cards||{}; for(const k in x){ const cur=STORE.cards[k]; if(!cur||(x[k].due||0)>(cur.due||0)) STORE.cards[k]=x[k]; } lsSet('cards',STORE.cards); }
         ma.docs.forEach(d=>{ const x=d.data(); const cur=STORE.mastery[d.id]; if(!cur||(x.lastRun||0)>(cur.lastRun||0)) STORE.mastery[d.id]=x; }); lsSet('mastery',STORE.mastery);
         pw.docs.forEach(d=>{ STORE.puzzleWeeks[d.id]=d.data(); });
@@ -2445,7 +2491,7 @@ async function initStore(){
     }
   }catch(e){ console.warn('store unavailable', e); DB=null; }
   storeReady=true;
-  renderPuzzleRecord(); renderMastery(); renderRepCards(); renderCards(); if(STATE.games.length){ renderWeekTable(); renderScanTiles(); renderBlunderList(); renderReview(); }
+  renderPuzzleRecord(); renderMastery(); renderRepCards(); renderCards(); if(STATE.games.length){ renderWeekTable(); renderScanTiles(); renderBlunderList(); renderTraining(); renderReview(); }
 }
 async function saveDoc(coll,id,data){
   if(coll==='puzzleweeks') STORE.puzzleWeeks[id]=data; else if(coll==='scans') STORE.scans[id]=data; else if(coll==='weeks') STORE.snapshots[id]=data;
@@ -2550,7 +2596,7 @@ function parseGame(g, username){
   while((m=re.exec(body))){ const san=m[3]; if(/^(1-0|0-1|1\/2-1\/2|\*)$/.test(san)) break; const isBlack=!!m[2]; moves.push(san); if(m[4] && ((isBlack&&me==='b')||(!isBlack&&me==='w'))){ const parts=m[4].split(':').map(Number); myClocks.push(parts[0]*3600+parts[1]*60+parts[2]); } }
   const slug=(g.eco||'').split('/').pop()||'';
   const acc=g.accuracies? (meW?g.accuracies.white:g.accuracies.black) : null;
-  return { id:(g.url||'').split('/').pop(), url:g.url, end:g.end_time, tc:g.time_class, rated:!!g.rated, me, myRating:my.rating, oppRating:opp.rating, opp:opp.username, result, how, slug, family:familyOf(slug), moves, nMoves:Math.ceil(moves.length/2), lastClock:myClocks.length?myClocks[myClocks.length-1]:null, clocks:myClocks, acc, week:weekKey(g.end_time*1000), timeControl:g.time_control, pgn };
+  return { id:(g.url||'').split('/').pop(), url:g.url, end:g.end_time, tc:g.time_class, rated:!!g.rated, me, myRating:my.rating, oppRating:opp.rating, opp:opp.username, result, how, slug, family:familyOf(slug), moves, nMoves:Math.ceil(moves.length/2), lastClock:myClocks.length?myClocks[myClocks.length-1]:null, clocks:myClocks, acc, week:weekKey(g.end_time*1000), timeControl:g.time_control, finalFen:g.fen||null, pgn };
 }
 
 // ---------- opening families ----------
@@ -2577,7 +2623,7 @@ function analyze(){
     const end=gs[gs.length-1].myRating; const accs=gs.filter(g=>g.acc!=null).map(g=>g.acc);
     const row={ week:k, n:gs.length, w,l,d, score:(w+0.5*d)/gs.length, avgOpp:Math.round(mean(gs.map(g=>g.oppRating))), end, start: prev? prev.end : gs[0].myRating, delta: prev? end-prev.end : null, acc: accs.length? mean(accs):null, accN:accs.length, timeouts: gs.filter(g=>g.result==='loss'&&g.how==='timeout').length, ids:gs.map(g=>g.id) };
     prev=row; return row; });
-  STATE.weeks=weeks; STATE.forecast=forecast(STATE.weekly); STATE.openings=openingStats(STATE.games); STATE.insights=insights(STATE.games);
+  STATE.weeks=weeks; STATE.forecast=forecast(STATE.weekly); STATE.openings=openingStats(STATE.games); STATE.insights=insights(STATE.games); STATE.train=trainingData(STATE.games);
 }
 
 function forecast(weekly){
@@ -2641,7 +2687,7 @@ function weekScanStats(row){ const s=scansFor(row.ids); if(!s.length) return nul
 function puzzleWeek(k){ return STORE.puzzleWeeks[k]||null; }
 
 // ---------- rendering: progress ----------
-function renderAll(){ renderTiles(); renderChart(); renderWeekTable(); renderOpenings(); renderStrategy(); renderScanTiles(); renderBlunderList(); renderReview(); }
+function renderAll(){ renderTiles(); renderChart(); renderWeekTable(); renderOpenings(); renderStrategy(); renderScanTiles(); renderBlunderList(); renderTraining(); renderReview(); }
 
 function renderTiles(){
   const t=$('#tiles'); const g=STATE.games; if(!g.length){ t.innerHTML='<div class="empty">No rated '+esc(STATE.timeClass)+' games for this player.</div>'; return; }
@@ -2905,15 +2951,153 @@ $('#cardStart').addEventListener('click',()=>startCards(false));
 $('#cardAhead').addEventListener('click',()=>startCards(true));
 $$('#cardSeg button').forEach(b=>b.addEventListener('click',()=>{ cardSel=b.dataset.c; lsSet('cardSel',cardSel); renderCards(); }));
 
+// ---------- training: data ----------
+const PVAL={p:1,n:3,b:3,r:5,q:9};
+function matBal(c){ let w=0,b=0; c.board().forEach(r=>r.forEach(p=>{ if(p&&p.type!=='k'){ if(p.color==='w') w+=PVAL[p.type]; else b+=PVAL[p.type]; } })); return w-b; }
+function matFen(fen){ let w=0,b=0; for(const ch of fen.split(' ')[0]){ const l=ch.toLowerCase(); if(PVAL[l]){ if(ch===l) b+=PVAL[l]; else w+=PVAL[l]; } } return w-b; }
+function trainingData(games){
+  const recent=games.slice(-300); const conv=[]; const pool=[]; let up=0, upWon=0, upLost=0, upLostTime=0;
+  const spent={opening:[],middle:[],end:[]}; let longThinks=0, longMid=0, timeoutsNotLost=0, timeouts=0, abandoned=0; const abMat=[];
+  for(const g of recent){
+    if(g.result==='loss'&&g.how==='timeout'){ timeouts++; if(g.finalFen && matFen(g.finalFen)*(g.me==='w'?1:-1)>=-2) timeoutsNotLost++; }
+    if(g.result==='loss'&&g.how==='abandoned'){ abandoned++; if(g.finalFen) abMat.push(matFen(g.finalFen)*(g.me==='w'?1:-1)); }
+    const c=new Chess(); let first=null, maxMat=-99, prevClk=null, clkIdx=0;
+    for(let i=0;i<g.moves.length;i++){ const mv=c.move(g.moves[i]); if(!mv) break; const ply=i+1; const mine= mv.color===g.me;
+      if(mine){ const clk=g.clocks[clkIdx++]; if(prevClk!=null&&clk!=null){ const s=prevClk-clk; const ph= ply<=20?'opening':ply<=60?'middle':'end'; if(s>=0&&s<900){ spent[ph].push(s); if(s>=60){ longThinks++; if(ph==='middle') longMid++; } } } if(clk!=null) prevClk=clk; }
+      else if(ply>=20){ const mat=matBal(c)*(g.me==='w'?1:-1); if(!first&&mat>=3) first={fen:c.fen(),mat,moveNo:Math.floor(ply/2)+1}; if(mat>maxMat) maxMat=mat; if(ply<=60&&c.moves().length>5) pool.push({id:g.id,fen:c.fen(),moveNo:Math.floor(ply/2)+1,me:g.me,opp:g.opp,date:g.end}); }
+    }
+    if(first){ up++; if(g.result==='win') upWon++; else if(g.result==='loss'){ upLost++; if(g.how==='timeout') upLostTime++; conv.push({id:g.id,url:g.url,date:g.end,opp:g.opp,oppRating:g.oppRating,me:g.me,fen:first.fen,mat:first.mat,moveNo:first.moveNo,maxMat,how:g.how,nMoves:g.nMoves}); } }
+  }
+  const avg=a=>a.length? Math.round(mean(a)) : null; const med=a=>{ if(!a.length) return null; const s=[...a].sort((x,y)=>x-y); return s[Math.floor(s.length/2)]; };
+  return { n:recent.length, conv:conv.reverse(), pool, up, upWon, upLost, upLostTime, spent:{opening:avg(spent.opening),middle:avg(spent.middle),end:avg(spent.end)}, longThinks, longMid, timeouts, timeoutsNotLost, abandoned, abandonedMedianMat:med(abMat) };
+}
+function classifyBlunder(fenBefore, fenAfter, cpB, cpA, bestUci, oppBest){
+  try{ if(cpB>=900) return 'missed mate'; if(cpA<=-900) return 'allowed mate';
+    const t=new Chess(fenBefore); const bm=bestUci? t.move({from:bestUci.slice(0,2),to:bestUci.slice(2,4),promotion:bestUci[4]}) : null;
+    if(bm&&bm.captured&&PVAL[bm.captured]>=3) return 'missed a free piece';
+    const t2=new Chess(fenAfter); const om=oppBest? t2.move({from:oppBest.slice(0,2),to:oppBest.slice(2,4),promotion:oppBest[4]}) : null;
+    if(om&&om.captured&&PVAL[om.captured]>=3) return 'hung a piece';
+    if(om&&om.captured) return 'hung a pawn'; if(bm&&bm.captured) return 'missed a capture'; return 'positional';
+  }catch(e){ return 'positional'; }
+}
+const TYPE_THEMES={'hung a piece':['hangingPiece','defensiveMove'],'missed a free piece':['hangingPiece','fork'],'allowed mate':['mateIn2','backRankMate'],'missed mate':['mateIn1','mateIn2'],'hung a pawn':['defensiveMove','pin'],'missed a capture':['fork','discoveredAttack'],'positional':['middlegame','pin']};
+function blunderTypeCounts(){ const scans=Object.values(STORE.scans).filter(s=>STATE.games.some(g=>g.id===s.gameId)); const counts={}; scans.forEach(s=>s.blunders.forEach(b=>{ const t=b.type||classifyBlunder(b.fen,b.fenAfter||b.fen,b.cpBefore,b.cpAfter,b.best,b.oppBest); counts[t]=(counts[t]||0)+1; })); return counts; }
+let autoThemeFlip=0;
+function autoTheme(){ const counts=blunderTypeCounts(); const top=Object.entries(counts).sort((a,b)=>b[1]-a[1])[0]; const themes= top? TYPE_THEMES[top[0]]||['hangingPiece','defensiveMove'] : ['hangingPiece','defensiveMove']; return themes[(autoThemeFlip++)%themes.length]; }
+function autoThemeWhy(){ const counts=blunderTypeCounts(); const tot=Object.values(counts).reduce((a,b)=>a+b,0); const top=Object.entries(counts).sort((a,b)=>b[1]-a[1])[0]; if(!top) return 'No scanned games yet, so the theme is hanging pieces: the most common way games are decided at this level.'; return 'Your most common blunder type is "'+top[0]+'" ('+top[1]+' of '+tot+' scanned blunders), so puzzles alternate between '+TYPE_THEMES[top[0]].join(' and ')+'.'; }
+
+// ---------- training: findings ----------
+function renderTraining(){
+  const T=STATE.train; const I=STATE.insights; const el=$('#trainFindings');
+  if(!T||!I){ el.innerHTML='<div class="empty">Load games to see what to work on.</div>'; renderConv(); renderSpeed(); renderBlunderTypes(); return; }
+  $('#trainScope').textContent='Last '+T.n+' rated '+STATE.timeClass+' games';
+  const f=[];
+  f.push({sev:'bad',text:'<b>Converting.</b> You were up 3 or more points after move 10 in '+T.up+' games and won '+pct(T.upWon/T.up)+' of them. '+T.upLost+' losses came from winning positions, '+T.upLostTime+' of those on time. A piece up should win four games in five.'});
+  f.push({sev:'warn',text:'<b>The clock.</b> '+T.timeouts+' losses on time, '+T.timeoutsNotLost+' of them in positions that were even or better. Middlegame pace '+T.spent.middle+' seconds a move with '+T.longMid+' thinks over a minute; opening pace '+T.spent.opening+' seconds a move on lines you should know cold.'});
+  const counts=blunderTypeCounts(); const tot=Object.values(counts).reduce((a,b)=>a+b,0); const top=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,2);
+  f.push({sev:'warn',text:'<b>Dropping material.</b> '+T.abandoned+' losses abandoned, typically '+(T.abandonedMedianMat!=null? Math.abs(T.abandonedMedianMat)+' points down':'well down')+' by then. '+(tot? 'Scanned blunders so far: '+top.map(([k,v])=>k+' ('+v+')').join(', ')+'.' : 'Scan games below to see which kind of blunder it is.')});
+  el.innerHTML=f.map(x=>'<div class="finding '+x.sev+'">'+x.text+'</div>').join('');
+  renderConv(); renderSpeed(); renderBlunderTypes();
+}
+function renderBlunderTypes(){ const el=$('#blunderTypes'); const counts=blunderTypeCounts(); const tot=Object.values(counts).reduce((a,b)=>a+b,0); if(!tot){ el.innerHTML=''; return; }
+  const list=Object.entries(counts).sort((a,b)=>b[1]-a[1]); el.innerHTML='<div class="eyebrow" style="margin-bottom:6px">Blunder types ('+tot+')</div><div class="bars">'+list.map(([k,v])=>'<div class="bar"><span>'+esc(k)+'</span><div class="track"><div class="fill'+(k.startsWith('hung')||k==='allowed mate'?' bad':'')+'" style="width:'+Math.round(v/tot*100)+'%"></div></div><span class="num small">'+v+' <span class="muted">'+pct(v/tot)+'</span></span></div>').join('')+'</div>'; }
+
+// ---------- training: convert ----------
+let conv={board:null, cur:null, chess:null, busy:false, done:false, sans:[]};
+function convRec(id){ return STORE.conv[id]||{attempts:0,wins:0,draws:0,last:0}; }
+function renderConv(){
+  const T=STATE.train; const tiles=$('#convTiles'); const list=$('#convList');
+  if(!T){ tiles.innerHTML=''; list.innerHTML='<div class="empty">Load games first.</div>'; return; }
+  const items=T.conv; const done=items.filter(x=>convRec(x.id).wins>0).length; const weeks=Object.values(STORE.convWeeks); const att=weeks.reduce((a,w)=>a+w.attempts,0), wins=weeks.reduce((a,w)=>a+w.wins,0); const cw=STORE.convWeeks[weekKey(new Date())];
+  tiles.innerHTML=[{l:'Positions to convert',v:items.length,s:'games you were winning and lost'},{l:'Won back',v:done,s:'converted at least once'},{l:'Drill record',v:att? wins+'/'+att : '0/0',s:att? pct(wins/att)+' conversion in drills' : 'no drills yet'},{l:'This week',v:cw? cw.wins+'/'+cw.attempts:'0/0',s:'target: five wins'}].map(x=>'<div class="tile"><div class="eyebrow">'+x.l+'</div><div class="v">'+x.v+'</div><div class="sub">'+x.s+'</div></div>').join('');
+  if(!items.length){ list.innerHTML='<div class="empty">No games lost from a winning position. Good.</div>'; return; }
+  list.innerHTML='<table><thead><tr><th>Game</th><th class="n">Up</th><th class="n">At move</th><th>Lost by</th><th class="n">Drills</th></tr></thead><tbody>'+items.map((x,i)=>{ const r=convRec(x.id); return '<tr class="clickable'+(conv.cur&&conv.cur.id===x.id?' selected':'')+'" data-ci="'+i+'"><td>'+fmtDate(x.date)+' <span class="muted small">vs '+esc(x.opp)+' ('+x.oppRating+')</span></td><td class="n up">+'+x.mat+'</td><td class="n">'+x.moveNo+'</td><td><span class="pill">'+esc(x.how)+'</span></td><td class="n">'+(r.attempts? r.wins+'/'+r.attempts : '<span class="muted">0</span>')+'</td></tr>'; }).join('')+'</tbody></table>';
+  $$('tr.clickable',list).forEach(tr=>tr.addEventListener('click',()=>startConv(items[+tr.dataset.ci])));
+}
+function startConv(item){
+  conv.cur=item; conv.chess=new Chess(item.fen); conv.done=false; conv.busy=false; conv.sans=[];
+  if(!conv.board) conv.board=makeBoard($('#convBoard'),{onMove:convMove});
+  conv.board.set(conv.chess,item.me); conv.board.lastMove(null); conv.board.hint(null); conv.board.enable(true,item.me);
+  $('#convTitle').textContent='vs '+item.opp+' · '+fmtDate(item.date)+' · lost by '+item.how;
+  $('#convMsg').className='msg'; $('#convMsg').textContent='Move '+item.moveNo+'. You are up '+item.mat+'. Win it this time.'; $('#convMoves').innerHTML=''; updateConvMat(); renderConv();
+  $('#convBoard').scrollIntoView({behavior:'smooth',block:'center'});
+}
+function updateConvMat(){ const m=matBal(conv.chess)*(conv.cur.me==='w'?1:-1); $('#convMat').textContent='material '+(m>0?'+':'')+m; $('#convMat').className='num '+(m>=3?'up':m<=0?'down':'flat'); return m; }
+async function convMove(from,to,promo){
+  if(!conv.cur||conv.done||conv.busy) return; const mv=conv.chess.move({from,to,promotion:promo}); if(!mv){ conv.board.redraw(); return; }
+  conv.sans.push(mv.san); conv.board.set(conv.chess); conv.board.lastMove({from,to}); const mBefore=updateConvMat();
+  if(conv.chess.in_checkmate()){ finishConv('win'); return; } if(conv.chess.in_draw()){ finishConv('draw'); return; }
+  conv.busy=true; conv.board.enable(false); $('#convMsg').className='msg'; $('#convMsg').textContent='Engine thinking…';
+  try{ const skill=parseInt($('#convStrength').value,10); const r=await engineGo(conv.chess.fen(), skill>=20?12:skill>=8?8:6, skill); const em=conv.chess.move({from:r.best.slice(0,2),to:r.best.slice(2,4),promotion:r.best[4]}); if(!em){ finishConv('draw'); return; } conv.sans.push(em.san); conv.board.set(conv.chess); conv.board.lastMove({from:em.from,to:em.to}); const mAfter=updateConvMat();
+    $('#convMoves').innerHTML=conv.sans.map((s,i)=>(i%2===0?'<b>':'')+esc(s)+(i%2===0?'</b>':'')).join(' ');
+    if(conv.chess.in_checkmate()){ finishConv('loss'); return; } if(conv.chess.in_draw()){ finishConv('draw'); return; }
+    $('#convMsg').className= mAfter<mBefore-2? 'msg bad' : 'msg'; $('#convMsg').textContent= mAfter<mBefore-2? 'That cost you '+(mBefore-mAfter)+' points. Engine played '+em.san+'. Keep going.' : 'Engine played '+em.san+'. Your move.';
+  }catch(e){ $('#convMsg').className='msg bad'; $('#convMsg').textContent='Engine error: '+e.message; }
+  conv.busy=false; if(!conv.done) conv.board.enable(true,conv.cur.me);
+}
+async function finishConv(result){
+  conv.done=true; conv.board.enable(false); const r=convRec(conv.cur.id); r.attempts++; if(result==='win') r.wins++; if(result==='draw') r.draws++; r.last=Date.now(); r.updated=Date.now(); STORE.conv[conv.cur.id]=r; lsSet('conv',STORE.conv);
+  const k=weekKey(new Date()); const w=STORE.convWeeks[k]||{week:k,attempts:0,wins:0,draws:0}; w.attempts++; if(result==='win') w.wins++; if(result==='draw') w.draws++; w.updated=Date.now(); STORE.convWeeks[k]=w; lsSet('convWeeks',STORE.convWeeks);
+  const msg=$('#convMsg'); msg.className= result==='win'?'msg good': result==='draw'?'msg warn':'msg bad';
+  msg.textContent= result==='win'? 'Converted. That is how it should have gone the first time. Next position.' : result==='draw'? 'Drawn. A won position drawn is a half point thrown away; try it again and trade down earlier.' : result==='resign'? 'Given up. Restart it and trade pieces the moment you are ahead.' : 'Mated. From a winning position. Restart it and look at what their pieces attack before each move.';
+  renderConv(); renderReview(); if(DB){ try{ await DB.collection('conv').doc(conv.cur.id).set(r); await DB.collection('convweeks').doc(k).set(w); }catch(e){} }
+}
+$('#convNext').addEventListener('click',()=>{ const T=STATE.train; if(!T||!T.conv.length) return; const unseen=T.conv.filter(x=>!convRec(x.id).wins); const pool=unseen.length? unseen : T.conv; startConv(pool[Math.floor(Math.random()*pool.length)]); });
+$('#convRetry').addEventListener('click',()=>{ if(conv.cur) startConv(conv.cur); });
+$('#convResign').addEventListener('click',()=>{ if(conv.cur&&!conv.done) finishConv('resign'); });
+function engineGo(fen, depth, skill){
+  const run=async()=>{ const w=await engineInit(); return new Promise(resolve=>{ let best=null; const handler=e=>{ const line=typeof e.data==='string'?e.data:''; if(line.startsWith('bestmove')){ best=line.split(' ')[1]; w.removeEventListener('message',handler); w.postMessage('setoption name Skill Level value 20'); resolve({best}); } }; w.addEventListener('message',handler); w.postMessage('setoption name Skill Level value '+skill); w.postMessage('position fen '+fen); w.postMessage('go depth '+depth); }); };
+  const p=ENGINE.queue.then(run,run); ENGINE.queue=p.catch(()=>{}); return p;
+}
+
+// ---------- training: speed check ----------
+let speed={board:null, round:null, timer:null, chess:null, cpB:null, t0:0};
+function renderSpeed(){
+  const tiles=$('#speedTiles'); const weeks=Object.values(STORE.speedWeeks); const pos=weeks.reduce((a,w)=>a+w.positions,0), pass=weeks.reduce((a,w)=>a+w.passes,0), tsum=weeks.reduce((a,w)=>a+w.timeSum,0); const cw=STORE.speedWeeks[weekKey(new Date())];
+  tiles.innerHTML=[{l:'Pass rate',v:pos? pct(pass/pos):'n/a',s:pos? pos+' positions graded':'no rounds yet'},{l:'Average decision',v:pos? (tsum/pos).toFixed(1)+'s':'n/a',s:'target: under 12'},{l:'This week',v:cw? cw.passes+'/'+cw.positions:'0/0',s:'one round a day'},{l:'Your game pace',v:STATE.train&&STATE.train.spent.middle!=null? STATE.train.spent.middle+'s':'n/a',s:'per middlegame move in real games'}].map(x=>'<div class="tile"><div class="eyebrow">'+x.l+'</div><div class="v">'+x.v+'</div><div class="sub">'+x.s+'</div></div>').join('');
+}
+function startSpeed(){
+  const T=STATE.train; if(!T||T.pool.length<10){ $('#speedMsg').textContent='Load games first.'; return; }
+  const pool=T.pool.slice(); const items=[]; while(items.length<10&&pool.length){ const i=Math.floor(Math.random()*pool.length); items.push(pool.splice(i,1)[0]); }
+  speed.round={items, idx:0, results:[]}; if(!speed.board) speed.board=makeBoard($('#speedBoard'),{onMove:speedMove}); $('#speedList').innerHTML=''; nextSpeed();
+}
+async function nextSpeed(){
+  const r=speed.round; if(!r) return; clearInterval(speed.timer); $('#speedSkip').hidden=true;
+  if(r.idx>=r.items.length){ finishSpeed(); return; }
+  const it=r.items[r.idx]; speed.chess=new Chess(it.fen); speed.cpB=null; speed.board.set(speed.chess,it.me); speed.board.lastMove(null); speed.board.enable(true,it.me);
+  $('#speedTitle').textContent='Position '+(r.idx+1)+' of 10 · vs '+it.opp+', move '+it.moveNo; $('#speedMsg').className='msg'; $('#speedMsg').textContent='Your move. Twenty seconds.';
+  speed.t0=Date.now(); const clock=$('#speedClock'); clock.textContent='20.0'; clock.style.color='';
+  speed.timer=setInterval(()=>{ const left=20-(Date.now()-speed.t0)/1000; clock.textContent=Math.max(0,left).toFixed(1); if(left<=5) clock.style.color='var(--bad)'; if(left<=0){ clearInterval(speed.timer); speedTimeout(); } },100);
+  try{ const sgn=it.me==='w'?1:-1; const e=await engineEval(it.fen); const stm=it.fen.split(' ')[1]; speed.cpB={cp:sgn*(stm==='w'?e.cp:-e.cp), best:e.best}; }catch(err){}
+}
+function speedTimeout(){ const r=speed.round; if(!r) return; speed.board.enable(false); r.results.push({pass:false,time:20,loss:null,timeUp:true}); $('#speedMsg').className='msg bad'; $('#speedMsg').textContent='Time. No move is worse than any sound move. Next.'; r.idx++; addSpeedRow(r.results[r.results.length-1], r.items[r.idx-1], null); setTimeout(nextSpeed,1200); }
+async function speedMove(from,to,promo){
+  const r=speed.round; if(!r) return; clearInterval(speed.timer); const t=(Date.now()-speed.t0)/1000; const it=r.items[r.idx]; const mv=speed.chess.move({from,to,promotion:promo}); if(!mv){ speed.board.redraw(); return; }
+  speed.board.set(speed.chess); speed.board.lastMove({from,to}); speed.board.enable(false); $('#speedMsg').className='msg'; $('#speedMsg').textContent='Grading '+mv.san+'…';
+  let loss=null, bestSan=null; try{ const sgn=it.me==='w'?1:-1; if(!speed.cpB){ const e=await engineEval(it.fen); const stm=it.fen.split(' ')[1]; speed.cpB={cp:sgn*(stm==='w'?e.cp:-e.cp), best:e.best}; } const a=await engineEval(speed.chess.fen()); const stm2=speed.chess.fen().split(' ')[1]; const cpA=sgn*(stm2==='w'?a.cp:-a.cp); loss=Math.max(0,speed.cpB.cp-cpA); try{ const tt=new Chess(it.fen); const bm=tt.move({from:speed.cpB.best.slice(0,2),to:speed.cpB.best.slice(2,4),promotion:speed.cpB.best[4]}); bestSan=bm?bm.san:null; }catch(e){} }catch(e){}
+  const pass= loss!=null && loss<=50; r.results.push({pass,time:t,loss}); r.idx++;
+  $('#speedMsg').className= pass?'msg good':'msg bad'; $('#speedMsg').textContent= loss==null? 'Could not grade that one.' : pass? mv.san+' in '+t.toFixed(1)+'s. Sound.'+(loss>0?' (gives up '+(loss/100).toFixed(1)+')':'') : mv.san+' loses '+(loss/100).toFixed(1)+' pawns. Engine wanted '+bestSan+'.';
+  addSpeedRow(r.results[r.results.length-1], it, mv.san, bestSan); setTimeout(nextSpeed, pass?900:2200);
+}
+function addSpeedRow(res,it,san,bestSan){ const el=$('#speedList'); if(!el.querySelector('table')) el.innerHTML='<table><thead><tr><th>#</th><th>Move</th><th class="n">Time</th><th class="n">Cost</th><th>Result</th></tr></thead><tbody></tbody></table>'; el.querySelector('tbody').insertAdjacentHTML('beforeend','<tr><td class="n">'+speed.round.idx+'</td><td class="num">'+(san?esc(san):'none')+(!res.pass&&bestSan?' <span class="muted small">('+esc(bestSan)+')</span>':'')+'</td><td class="n">'+res.time.toFixed(1)+'s</td><td class="n">'+(res.loss==null?'':(res.loss/100).toFixed(1))+'</td><td>'+(res.pass?'<span class="pill good">pass</span>':res.timeUp?'<span class="pill bad">time</span>':'<span class="pill bad">miss</span>')+'</td></tr>'); }
+async function finishSpeed(){
+  const r=speed.round; const passes=r.results.filter(x=>x.pass).length; const tsum=r.results.reduce((a,x)=>a+x.time,0); const k=weekKey(new Date()); const w=STORE.speedWeeks[k]||{week:k,rounds:0,positions:0,passes:0,timeSum:0}; w.rounds++; w.positions+=r.results.length; w.passes+=passes; w.timeSum+=tsum; w.updated=Date.now(); STORE.speedWeeks[k]=w; lsSet('speedWeeks',STORE.speedWeeks);
+  $('#speedMsg').className= passes>=8?'msg good':passes>=6?'msg warn':'msg bad'; $('#speedMsg').textContent='Round done: '+passes+' of 10 sound, '+(tsum/10).toFixed(1)+' seconds a move. '+(passes>=8?'That pace is fine. Play your games at it.':'Under eight means you are rushing into blunders or freezing. The fix is the two questions: what does their move attack, what of mine is loose.'); $('#speedTitle').textContent='Round complete'; speed.round=null; $('#speedClock').textContent='';
+  renderSpeed(); renderReview(); if(DB){ try{ await DB.collection('speedweeks').doc(k).set(w); }catch(e){} }
+}
+$('#speedStart').addEventListener('click',startSpeed);
+$('#speedSkip').addEventListener('click',nextSpeed);
+
 // ---------- puzzles ----------
 const LEVELS=['easiest','easier','normal','harder','hardest'];
 let pz={ board:null, cur:null, chess:null, idx:0, failed:false, done:false, streak:0, fails:0, level: lsGet('pzLevel',1), busy:false };
-$('#pzLevel').textContent=LEVELS[pz.level];
+$('#pzLevel').textContent=LEVELS[pz.level]; $('#pzTheme').value=lsGet('pzTheme','auto'); $('#pzTheme').addEventListener('change',()=>lsSet('pzTheme',$('#pzTheme').value));
 async function nextPuzzle(){
   if(pz.busy) return; pz.busy=true; $('#pzNext').disabled=true;
   const theme=$('#pzTheme').value; const msg=$('#pzMsg'); msg.className='msg'; msg.textContent='Fetching a puzzle…';
   try{
-    const url='https://lichess.org/api/puzzle/next?difficulty='+LEVELS[pz.level]+(theme!=='mix'?'&angle='+encodeURIComponent(theme):'');
+    const th = theme==='auto'? autoTheme() : theme; $('#pzWhy').textContent = theme==='auto'? autoThemeWhy() : 'Theme chosen by hand: '+th+'.';
+    const url='https://lichess.org/api/puzzle/next?difficulty='+LEVELS[pz.level]+(th!=='mix'?'&angle='+encodeURIComponent(th):'');
     const r=await fetch(url); if(!r.ok) throw new Error('Lichess did not return a puzzle ('+r.status+')'); const data=await r.json();
     pz.cur=data.puzzle; pz.chess=new Chess(data.puzzle.fen); pz.idx=0; pz.failed=false; pz.done=false;
     if(!pz.board) pz.board=makeBoard($('#pzBoard'),{onMove:puzzleMove});
@@ -3005,9 +3189,9 @@ async function scanGames(){
     const my=[]; const blunders=[]; let losses=[];
     info.forEach((m,i)=>{ if(m.color!==g.me) return; const sgn=g.me==='w'?1:-1; const cpB=sgn*evals[i].white, cpA=sgn*evals[i+1].white; const loss=Math.max(0,cpB-cpA); losses.push(Math.min(loss,1000));
       const bestUci=evals[i].best; let bestSan=bestUci; try{ const t=new Chess(m.fenBefore); const bm=t.move({from:bestUci.slice(0,2),to:bestUci.slice(2,4),promotion:bestUci[4]}); if(bm) bestSan=bm.san; }catch(e){}
-      if(loss>=200 && cpB>-700){ blunders.push({ply:m.ply, moveNo:Math.ceil(m.ply/2), san:m.san, best:bestUci, bestSan, cpBefore:cpB, cpAfter:cpA, loss, fen:m.fenBefore, phase:m.phase}); } });
+      if(loss>=200 && cpB>-700){ const oppBest=evals[i+1].best; blunders.push({ply:m.ply, moveNo:Math.ceil(m.ply/2), san:m.san, best:bestUci, bestSan, oppBest, cpBefore:cpB, cpAfter:cpA, loss, fen:m.fenBefore, fenAfter:m.fenAfter, phase:m.phase, type:classifyBlunder(m.fenBefore,m.fenAfter,cpB,cpA,bestUci,oppBest)}); } });
     const scan={ gameId:g.id, url:g.url, opp:g.opp, date:g.end, week:g.week, me:g.me, result:g.result, acpl: losses.length? Math.round(mean(losses)) : 0, nMyMoves:losses.length, blunders, mistakes: losses.filter(l=>l>=100&&l<200).length, inaccuracies: losses.filter(l=>l>=50&&l<100).length, depth:ENGINE.depth, scannedAt:Date.now() };
-    await saveDoc('scans',g.id,scan); renderScanTiles(); renderBlunderList(); renderWeekTable(); renderReview(); renderStrategy();
+    await saveDoc('scans',g.id,scan); renderScanTiles(); renderBlunderList(); renderWeekTable(); renderReview(); renderStrategy(); renderTraining();
   }
   bar.style.width='100%'; note.textContent='Done: '+targets.length+' game'+(targets.length===1?'':'s')+' scanned at depth '+ENGINE.depth+'. Blunder = a drop of 2 pawns or more.';
   scanning=false; btn.disabled=false;
@@ -3048,7 +3232,9 @@ function renderStrategy(){
   const I=STATE.insights; const el=$('#findings'); const L=$('#lessons');
   if(!I){ el.innerHTML='<div class="empty">Load games first.</div>'; L.innerHTML=''; return; }
   $('#stratScope').textContent='Last '+I.n+' rated '+STATE.timeClass+' games, since '+fmtDate(I.from);
-  const f=[]; const trig=new Set();
+  const f=[]; const trig=new Set(); const T=STATE.train;
+  if(T&&T.up>=20){ f.push({sev: T.upLost/T.up>=0.3?'bad':'', text:'Up 3 or more points of material after move 10 in <b>'+T.up+'</b> of '+T.n+' games. Won <b>'+pct(T.upWon/T.up)+'</b> of them; lost '+T.upLost+' ('+T.upLostTime+' on time).'}); if(T.upWon/T.up<0.7) trig.add('convert'); }
+  if(T&&T.spent.middle!=null){ f.push({sev: T.longMid>=30?'warn':'', text:'Seconds per move: opening <b>'+T.spent.opening+'</b>, middlegame <b>'+T.spent.middle+'</b>, endgame <b>'+T.spent.end+'</b>. Thinks over a minute: <b>'+T.longThinks+'</b>, '+T.longMid+' of them in the middlegame. Timeouts in even or better positions: <b>'+T.timeoutsNotLost+'</b>.'}); if(T.timeoutsNotLost>=8) trig.add('clock'); }
   const lossShare=k=>I.losses? I.lossBy[k]/I.losses : 0;
   if(I.losses){ f.push({sev: lossShare('timeout')>=0.15?'bad':'',text:'How your losses end: <b>'+pct(lossShare('checkmated'))+'</b> checkmated, <b>'+pct(lossShare('resigned'))+'</b> resigned, <b>'+pct(lossShare('timeout'))+'</b> on time, <b>'+pct(lossShare('abandoned'))+'</b> abandoned.'}); }
   if(I.losses && lossShare('timeout')>=0.15){ trig.add('clock'); }
@@ -3062,10 +3248,11 @@ function renderStrategy(){
   if(I.losses && lossShare('resigned')>=0.45){ trig.add('resign'); }
   const scans=Object.values(STORE.scans).filter(s=>STATE.games.some(g=>g.id===s.gameId)); if(scans.length>=3){ const allB=scans.flatMap(s=>s.blunders); const ph={opening:0,middlegame:0,endgame:0}; allB.forEach(b=>ph[b.phase]++); const tot=allB.length||1; f.push({sev:'',text:'Engine scans ('+scans.length+' games): <b>'+(allB.length/scans.length).toFixed(1)+'</b> blunders per game. By phase: '+pct(ph.opening/tot)+' opening, '+pct(ph.middlegame/tot)+' middlegame, '+pct(ph.endgame/tot)+' endgame.'}); if(ph.endgame/tot>=0.4) trig.add('endgame'); if(ph.opening/tot>=0.4) trig.add('opening'); }
   el.innerHTML=f.map(x=>'<div class="finding '+x.sev+'">'+x.text+'</div>').join('')||'<div class="empty">Not enough games for findings yet.</div>';
-  const order=['clock','opening','endgame','tilt','resign','weaker']; const lessons=order.filter(k=>trig.has(k)).map(k=>LESSONS[k]).concat(CORE);
+  const order=['convert','clock','opening','endgame','tilt','resign','weaker']; const lessons=order.filter(k=>trig.has(k)).map(k=>LESSONS[k]).concat(CORE);
   L.innerHTML=lessons.map(l=>'<div class="lesson"><div class="row"><h3>'+esc(l.title)+'</h3>'+(l.trigger?'<span class="pill gold">from your games</span>':'<span class="pill">core</span>')+'</div><p class="small muted" style="margin:4px 0 0">'+esc(l.why)+'</p><ol>'+l.rules.map(r=>'<li>'+esc(r)+'</li>').join('')+'</ol></div>').join('');
 }
 const LESSONS={
+  convert:{trigger:true,title:'Convert when you are ahead',why:'You get winning positions and give them back.',rules:['Trade pieces, not pawns. Each trade makes the extra piece count for more.','Before every move when ahead: what did their last move attack, and is anything of mine undefended? Two questions, every move.','Queens off as soon as it costs nothing. Most of your reversals come with queens on.','Stop attacking the king with loose pieces. Promote a pawn or win more material; mate comes by itself.','Spend the time you have. You lose these on the clock too: a won position is worth the extra ten seconds a move.']},
   clock:{trigger:true,title:'Clock discipline',why:'Time losses and scrambles are showing up in your results.',rules:['Checkpoint: in a 10-minute game, have 5 minutes left at move 20 and 2 minutes at move 35. Glance at the clock every time your opponent moves.','Spend your time on forcing moves: checks, captures and threats. Quiet moves get ten seconds.','Under one minute, play safe moves instantly. Keep every piece defended, no new pawn moves, no long calculations.','Premove only recaptures. Everything else deserves a look at the board after their move.']},
   opening:{trigger:true,title:'Stop losing in the opening',why:'Too many games are over before move 20.',rules:['Before move 10: two center pawns, three minor pieces out, castled. Nothing else until that is done.','Every move, ask what your opponent\'s last move attacks. Deal with that first.','Keep the queen home until move 6 unless it wins material you have calculated to the end.','Pick one line for each of your three most common openings (Openings tab) and drill it until it is automatic.']},
   endgame:{trigger:true,title:'Convert and hold endgames',why:'Your results fall off in long games, or the engine finds your blunders late.',rules:['The moment queens come off, walk the king toward the center.','Rooks belong behind passed pawns, yours and theirs.','Ahead in material: trade pieces, keep pawns. Behind: trade pawns, keep pieces.','Learn two positions cold: king and pawn against king (the opposition), and the rook endgame bridge (Lucena).']},
@@ -3115,7 +3302,8 @@ function renderReview(){
     else focus.push({sev:'',text:'Habit: before each move, list checks, captures and threats for both sides. Aim for a blunder count under 1 per game in the scans.'}); }
   const scans=Object.values(STORE.scans).filter(s=>STATE.games.some(g=>g.id===s.gameId)); const allB=scans.flatMap(s=>s.blunders);
   if(allB.length>=5){ const ph={opening:0,middlegame:0,endgame:0}; allB.forEach(x=>ph[x.phase]++); const top=Object.entries(ph).sort((a,b)=>b[1]-a[1])[0]; focus.push({sev:'',text:'Tactics: most of your engine-flagged blunders come in the <b>'+top[0]+'</b>. Do 20 puzzles this week with the '+(top[0]==='endgame'?'Endgame':top[0]==='opening'?'Opening':'Middlegame')+' theme, then scan your next five games.'}); }
-  else focus.push({sev:'',text:'Tactics: do 20 puzzles this week and scan your next five games so the blunder rate has a baseline.'});
+  else focus.push({sev:'',text:'Tactics: scan your next ten games so the blunder types have a baseline, then do the targeted puzzles.'});
+  { const T=STATE.train; const cw=STORE.convWeeks[weekKey(new Date())]; const sw=STORE.speedWeeks[weekKey(new Date())]; if(T&&T.conv.length) focus.unshift({sev:'bad',text:'Convert: '+T.conv.length+' positions you were winning and lost are waiting in Training. This week: '+(cw? cw.wins+' won of '+cw.attempts+' played so far.':'play five of them out and win them.')+(sw? ' Speed check: '+sw.passes+' of '+sw.positions+' passed.':' Then one speed-check round.')}); }
   $('#focusList').innerHTML=focus.slice(0,5).map(x=>'<div class="finding '+x.sev+'">'+x.text+'</div>').join('');
   renderSnapTable();
 }
@@ -3131,13 +3319,14 @@ async function saveSnapshots(){
 }
 
 // ---------- export / import ----------
-$('#exportBtn').addEventListener('click',()=>{ const blob=new Blob([JSON.stringify({version:1,exported:new Date().toISOString(),puzzleWeeks:STORE.puzzleWeeks,scans:STORE.scans,snapshots:STORE.snapshots,mastery:STORE.mastery,cards:STORE.cards},null,1)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='chess-lab-records-'+weekKey(new Date())+'.json'; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1000); });
+$('#exportBtn').addEventListener('click',()=>{ const blob=new Blob([JSON.stringify({version:1,exported:new Date().toISOString(),puzzleWeeks:STORE.puzzleWeeks,scans:STORE.scans,snapshots:STORE.snapshots,mastery:STORE.mastery,cards:STORE.cards,conv:STORE.conv,convWeeks:STORE.convWeeks,speedWeeks:STORE.speedWeeks},null,1)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='chess-lab-records-'+weekKey(new Date())+'.json'; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1000); });
 $('#importFile').addEventListener('change',async e=>{ const f=e.target.files[0]; if(!f) return; try{ const data=JSON.parse(await f.text()); let n=0;
   for(const k in (data.puzzleWeeks||{})){ if(!STORE.puzzleWeeks[k]||(data.puzzleWeeks[k].updated||0)>(STORE.puzzleWeeks[k].updated||0)){ STORE.puzzleWeeks[k]=data.puzzleWeeks[k]; n++; } }
   for(const k in (data.scans||{})){ if(!STORE.scans[k]){ STORE.scans[k]=data.scans[k]; n++; } }
   for(const k in (data.snapshots||{})){ if(!STORE.snapshots[k]||(data.snapshots[k].savedAt||0)>(STORE.snapshots[k].savedAt||0)){ STORE.snapshots[k]=data.snapshots[k]; n++; } }
   for(const k in (data.mastery||{})){ const cur=STORE.mastery[k]; if(!cur||(data.mastery[k].lastRun||0)>(cur.lastRun||0)){ STORE.mastery[k]=data.mastery[k]; n++; } }
   for(const k in (data.cards||{})){ const cur=STORE.cards[k]; if(!cur||(data.cards[k].due||0)>(cur.due||0)){ STORE.cards[k]=data.cards[k]; n++; } } lsSet('cards',STORE.cards);
+  for(const coll of ['conv','convWeeks','speedWeeks']){ for(const k in (data[coll]||{})){ if(!STORE[coll][k]||(data[coll][k].updated||0)>(STORE[coll][k].updated||0)){ STORE[coll][k]=data[coll][k]; n++; } } lsSet(coll,STORE[coll]); } renderTraining();
   lsSet('pz_weeks',STORE.puzzleWeeks); lsSet('scans',STORE.scans); lsSet('snaps',STORE.snapshots); lsSet('mastery',STORE.mastery);
   if(DB){ for(const k in data.puzzleWeeks||{}) await saveDoc('puzzleweeks',k,STORE.puzzleWeeks[k]); for(const k in data.scans||{}) await saveDoc('scans',k,STORE.scans[k]); for(const k in data.snapshots||{}) await saveDoc('weeks',k,STORE.snapshots[k]); }
   $('#storeNote').textContent='Imported '+n+' record'+(n===1?'':'s')+'.'; renderPuzzleRecord(); renderRepCards(); renderMastery(); renderCards(); if(STATE.games.length){ renderWeekTable(); renderScanTiles(); renderBlunderList(); renderStrategy(); renderReview(); } else renderSnapTable();
@@ -3152,7 +3341,7 @@ $('#timeClass').addEventListener('change',()=>{ STATE.timeClass=$('#timeClass').
 (function boot(){
   const saved=lsGet('username',null); if(saved) $('#username').value=saved;
   const tc=lsGet('tc',null); if(tc&&lsGet('tcChosen',false)){ STATE.timeClass=tc; $('#timeClass').value=tc; }
-  renderPuzzleRecord(); renderRepCards(); renderMastery(); renderCards(); renderSnapTable();
+  renderPuzzleRecord(); renderRepCards(); renderMastery(); renderCards(); renderTraining(); renderSnapTable();
   initStore();
   const u=$('#username').value.trim(); if(u) loadPlayer(u);
 })();
